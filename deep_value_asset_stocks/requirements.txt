@@ -1,0 +1,8 @@
+opendartreader
+pykrx
+pandas
+requests
+python-dotenv
+openai
+google-generativeai
+pyTelegramBotAPI

@@ -1,0 +1,49 @@
+{
+    "005930": {
+        "corp_name": "Samsung Electronics",
+        "financials": {
+            "2023": {
+                "assets": 400000000000,
+                "liabilities": 100000000000,
+                "equity": 300000000000,
+                "revenue": 250000000000,
+                "operating_income": 6000000000,
+                "net_income": 5000000000,
+                "cash_and_equivalents": 50000000000,
+                "short_term_financial_assets": 40000000000
+            },
+            "2022": {"operating_income": 43000000000},
+            "2021": {"operating_income": 51000000000},
+            "2020": {"operating_income": 36000000000},
+            "2019": {"operating_income": 27000000000}
+        },
+        "shareholders": [
+            {"stock_name": "Chairman Lee", "stock_qota": 20.0},
+            {"stock_name": "Samsung Life", "stock_qota": 8.5},
+            {"stock_name": "National Pension", "stock_qota": 7.0}
+        ]
+    },
+    "000000": {
+        "corp_name": "Deep Value Corp",
+        "financials": {
+            "2023": {
+                "assets": 100000000000,
+                "liabilities": 10000000000,
+                "equity": 90000000000,
+                "revenue": 10000000000,
+                "operating_income": 500000000,
+                "net_income": 400000000,
+                "cash_and_equivalents": 30000000000,
+                "short_term_financial_assets": 20000000000
+            },
+            "2022": {"operating_income": 400000000},
+            "2021": {"operating_income": 300000000},
+            "2020": {"operating_income": 200000000},
+            "2019": {"operating_income": 100000000}
+        },
+        "shareholders": [
+            {"stock_name": "Founder Kim", "stock_qota": 45.0},
+            {"stock_name": "Wife Park", "stock_qota": 10.0}
+        ]
+    }
+}
