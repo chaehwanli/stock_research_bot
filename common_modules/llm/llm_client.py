@@ -2,7 +2,9 @@ import os
 import google.generativeai as genai
 from dotenv import load_dotenv
 
-load_dotenv()
+# Load .env from project root (2 levels up from common_modules/llm/llm_client.py)
+env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.env"))
+load_dotenv(env_path)
 
 class LLMClient:
     def __init__(self):

@@ -2,7 +2,9 @@ import os
 import telebot
 from dotenv import load_dotenv
 
-load_dotenv()
+# Load .env from project root
+env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.env"))
+load_dotenv(env_path)
 
 class TelegramNotifier:
     def __init__(self):

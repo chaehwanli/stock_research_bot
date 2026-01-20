@@ -3,15 +3,15 @@ import os
 import pandas as pd
 from datetime import datetime
 
-# Add src to path
-sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
+# Add parent directory to path to import common_modules
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from data.dart_fetcher import DartFetcher
-from data.market_fetcher import MarketDataFetcher
-from logic.screener import Screener
-from llm.llm_client import LLMClient
-from llm.prompts import REPORT_PROMPT
-from notification.telegram_bot import TelegramNotifier
+from common_modules.data.dart_fetcher import DartFetcher
+from common_modules.data.market_fetcher import MarketDataFetcher
+from common_modules.llm.llm_client import LLMClient
+from common_modules.notification.telegram_bot import TelegramNotifier
+from src.logic.screener import Screener
+from src.llm.prompts import REPORT_PROMPT
 
 def save_results_to_csv(results, filename="results.csv"):
     df = pd.DataFrame(results)
@@ -33,6 +33,12 @@ def main():
         dart_key = "MOCK"
     
     dart = DartFetcher(api_key=dart_key)
+    
+    # Check if DartFetcher fell back to MOCK mode
+    if dart.api_key == "MOCK" and not use_mock:
+        print("DartFetcher switched to MOCK mode. Switching MarketDataFetcher to MOCK mode as well.")
+        use_mock = True
+        
     market = MarketDataFetcher(use_mock=use_mock)
     screener = Screener(dart, market)
     llm = LLMClient()

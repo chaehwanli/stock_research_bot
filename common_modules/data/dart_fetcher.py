@@ -10,9 +10,15 @@ class DartFetcher:
         if self.api_key == "MOCK":
             self.load_mock_data()
         else:
-            self.dart = OpenDartReader(api_key)
+            try:
+                self.dart = OpenDartReader(api_key)
+            except Exception as e:
+                print(f"Warning: Failed to initialize OpenDartReader with provided key ({e}). Switching to MOCK mode.")
+                self.api_key = "MOCK"
+                self.load_mock_data()
 
     def load_mock_data(self):
+        # mock_data.json is expected to be in the same directory as this file (common_modules/data)
         mock_path = os.path.join(os.path.dirname(__file__), "mock_data.json")
         try:
             with open(mock_path, "r", encoding="utf-8") as f:
