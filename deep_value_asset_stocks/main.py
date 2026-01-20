@@ -47,6 +47,19 @@ def main():
     # 2. Screening
     tickers = market.get_all_stocks()
     print(f"Scanning {len(tickers)} tickers...")
+    
+    # Fallback to Mock if Real Mode returns 0 tickers (e.g. pykrx failure)
+    if not tickers and not use_mock:
+        print("Warning: Real Mode found 0 tickers (Market Data Error). Switching to MOCK Mode.")
+        use_mock = True
+        # Re-initialize modules in Mock Mode
+        dart.api_key = "MOCK"
+        dart.load_mock_data()
+        market = MarketDataFetcher(use_mock=True)
+        screener = Screener(dart, market)
+        tickers = market.get_all_stocks()
+        print(f"Scanning {len(tickers)} tickers (MOCK)...")
+        
     candidates = screener.run_screening(tickers)
     
     if not candidates:

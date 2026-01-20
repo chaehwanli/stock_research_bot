@@ -1,6 +1,9 @@
 from pykrx import stock
 import pandas as pd
 from datetime import datetime, timedelta
+import requests
+from bs4 import BeautifulSoup
+import re
 
 class MarketDataFetcher:
     def __init__(self, use_mock=False):
@@ -44,9 +47,57 @@ class MarketDataFetcher:
                          return df.iloc[-1]
             if not df.empty:
                 return df.iloc[-1]
+            
+            # If still empty after retries, trigger fallback
+            raise Exception("pykrx returned empty data")
+            
+        except Exception as e:
+            # Fallback to Naver Finance if pykrx fails
+            print(f"pykrx failed for {ticker} ({e}). Attempting fallback to Naver Finance for Fundamental data...")
+            return self._fetch_fundamental_naver(ticker)
+            
+
+
+    def _fetch_fundamental_naver(self, ticker):
+        """
+        Fallback method to fetch fundamental data (PBR, PER, DIV) from Naver Finance
+        """
+        url = f"https://finance.naver.com/item/main.naver?code={ticker}"
+        try:
+            res = requests.get(url)
+            soup = BeautifulSoup(res.text, 'html.parser')
+            
+            pbr = 0.0
+            per = 0.0
+            div = 0.0
+            
+            pbr_elem = soup.select_one("#_pbr")
+            if pbr_elem:
+                txt = pbr_elem.text.replace(',', '').strip()
+                if txt: pbr = float(txt)
+                
+            per_elem = soup.select_one("#_per")
+            if per_elem:
+                txt = per_elem.text.replace(',', '').strip()
+                if txt: per = float(txt)
+            
+            dvr_elem = soup.select_one("#_dvr")
+            if dvr_elem:
+                txt = dvr_elem.text.replace(',', '').strip()
+                if txt: div = float(txt)
+                
+            # If we got at least PBR, return as Series
+            if pbr > 0 or per > 0:
+                return pd.Series({
+                    "PBR": pbr,
+                    "PER": per,
+                    "DIV": div,
+                    "BPS": 0 # Not easily available via simple ID, but PBR is what we need mostly
+                })
+                
             return None
         except Exception as e:
-            print(f"Error fetching fundamental for {ticker}: {e}")
+            print(f"Error fetching Naver Finance fundamental for {ticker}: {e}")
             return None
 
     def get_ohlcv(self, ticker, start_date, end_date):
@@ -76,12 +127,76 @@ class MarketDataFetcher:
         if self.use_mock:
             return list(self.mock_market_data.keys())
 
-        try:
-            tickers = stock.get_market_ticker_list(market=market)
-            return tickers
-        except Exception as e:
-            print(f"Error fetching ticker list: {e}")
-            return []
+        # Try fetching tickers for today and look back up to 5 days if it fails
+        for i in range(5):
+            target_date = (datetime.now() - timedelta(days=i)).strftime("%Y%m%d")
+            try:
+                tickers = stock.get_market_ticker_list(target_date, market=market)
+                if tickers:
+                    return tickers
+            except Exception as e:
+                if i == 4: # Last attempt
+                    print(f"Error fetching ticker list: {e}")
+        
+        if not tickers:
+            print("pykrx returned 0 tickers. Attempting fallback to Naver Finance...")
+            tickers = self._fetch_tickers_naver(market)
+
+        return tickers
+
+    def _fetch_tickers_naver(self, market):
+        """
+        Fallback method to fetch tickers from Naver Finance
+        """
+        print(f"Fetching {market} tickers from Naver Finance...")
+        tickers = []
+        
+        # market codes for Naver: 0=KOSPI, 1=KOSDAQ
+        sosok_list = []
+        if market == "KOSPI" or market == "ALL":
+            sosok_list.append(0)
+        if market == "KOSDAQ" or market == "ALL":
+            sosok_list.append(1)
+            
+        for sosok in sosok_list:
+            try:
+                # 1. Get last page number
+                base_url = f"https://finance.naver.com/sise/sise_market_sum.naver?sosok={sosok}"
+                res = requests.get(base_url + "&page=1")
+                soup = BeautifulSoup(res.text, 'html.parser')
+                
+                last_page = 1
+                last_page_node = soup.select_one(".pgRR a")
+                if last_page_node:
+                    last_page_url = last_page_node['href']
+                    match = re.search(r'page=(\d+)', last_page_url)
+                    if match:
+                        last_page = int(match.group(1))
+                
+                print(f"Naver Finance (sosok={sosok}): Found {last_page} pages.")
+                
+                # 2. Scrape all pages
+                for page in range(1, last_page + 1):
+                    url = f"{base_url}&page={page}"
+                    res = requests.get(url)
+                    soup = BeautifulSoup(res.text, 'html.parser')
+                    
+                    items = soup.select("table.type_2 tbody tr")
+                    for item in items:
+                        if len(item.select("td")) < 2: 
+                            continue
+                        
+                        link = item.select_one("a.tltle")
+                        if link:
+                            code_match = re.search(r'code=(\d+)', link['href'])
+                            if code_match:
+                                tickers.append(code_match.group(1))
+                                
+            except Exception as e:
+                print(f"Error scraping Naver Finance (sosok={sosok}): {e}")
+                
+        # Remove duplicates just in case
+        return list(set(tickers))
 
     def get_stock_name(self, ticker):
         if self.use_mock:
