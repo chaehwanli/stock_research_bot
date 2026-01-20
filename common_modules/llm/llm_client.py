@@ -1,5 +1,5 @@
 import os
-import google.generativeai as genai
+from google import genai
 from dotenv import load_dotenv
 
 # Load .env from project root (2 levels up from common_modules/llm/llm_client.py)
@@ -11,16 +11,17 @@ class LLMClient:
         self.api_key = os.getenv("GEMINI_API_KEY")
         if not self.api_key:
             print("Warning: GEMINI_API_KEY not found in .env")
+            self.client = None
         else:
-            genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel('gemini-2.0-flash')
+            self.client = genai.Client(api_key=self.api_key)
+            self.model_id = 'gemini-2.0-flash'
 
     def analyze_company(self, company_data, prompt_template):
         """
         Sends company data to LLM for analysis using the provided prompt.
         """
-        if not self.api_key:
-            return "Error: No API Key"
+        if not self.client:
+            return "Error: No API Key or Client not initialized"
 
         prompt = prompt_template.format(
             name=company_data['name'],
@@ -32,7 +33,11 @@ class LLMClient:
         )
         
         try:
-            response = self.model.generate_content(prompt)
+            # New SDK usage: client.models.generate_content
+            response = self.client.models.generate_content(
+                model=self.model_id,
+                contents=prompt
+            )
             return response.text
         except Exception as e:
             return f"Error calling LLM: {e}"
