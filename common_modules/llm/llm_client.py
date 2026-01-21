@@ -41,3 +41,19 @@ class LLMClient:
             return response.text
         except Exception as e:
             return f"Error calling LLM: {e}"
+
+    def generate_text(self, prompt):
+        """
+        Generic method to send any text prompt to the LLM.
+        """
+        if not self.client:
+            return "Error: Client not initialized"
+            
+        try:
+            response = self.client.models.generate_content(
+                model=self.model_id,
+                contents=prompt
+            )
+            return response.text
+        except Exception as e:
+            return f"Error calling LLM: {e}"
