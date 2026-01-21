@@ -127,19 +127,23 @@ def main():
     for report in llm_reports:
         full_report += report + "\n---\n\n"
 
-    # 4. Notification
+    # 4. Publish to Wiki (First, to get the link)
+    from common_modules.publishing.wiki_publisher import WikiPublisher
+    publisher = WikiPublisher()
+    page_title = f"Bluechip_Report_{datetime.now().strftime('%Y-%m-%d')}"
+    wiki_url = publisher.publish_report(full_report, page_title)
+    
+    # 5. Notification
     print("Sending Notification...")
     summary = f"Bluechip Bot: Found {len(candidates)} candidates.\n"
     for c in formatted_candidates:
         summary += f"- {c['name']}: {c['grade']} ({c['score']}pts)\n"
+    
+    if wiki_url and isinstance(wiki_url, str):
+        summary += f"\n[Full Report]({wiki_url})"
+    
     notifier.send_message(summary)
 
-    # 5. Publish to Wiki
-    from common_modules.publishing.wiki_publisher import WikiPublisher
-    publisher = WikiPublisher()
-    page_title = f"Bluechip_Report_{datetime.now().strftime('%Y-%m-%d')}"
-    publisher.publish_report(full_report, page_title)
-    
     save_results_to_csv(candidates)
     print(">>> Job Completed.")
 
