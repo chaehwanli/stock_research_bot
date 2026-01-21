@@ -10,6 +10,14 @@ class Screener:
     def run_screening(self, tickers):
         print(f"Starting screening for {len(tickers)} tickers...")
         candidates = []
+        stats = {
+            "total_scanned": len(tickers),
+            "passed_pbr": 0,
+            "passed_profit": 0,
+            "passed_cash": 0,
+            "passed_shareholder": 0,
+            "final_candidates": 0
+        }
         
         for ticker in tickers:
             corp_name = self.market.get_stock_name(ticker)
@@ -20,30 +28,34 @@ class Screener:
             if not pbr_ok:
                 print(f"  -> Failed PBR: {pbr_val}")
                 continue
+            stats["passed_pbr"] += 1
             
             # Get Corp Code for DART
             corp_code = self.dart.find_corp_code(corp_name)
             if not corp_code:
                 print(f"  -> Failed to find Corp Code for {corp_name}")
                 continue
-
+            
             # 2. Consecutive Profit Check
             profit_ok, profit_history = self.check_consecutive_profit(corp_code)
             if not profit_ok:
                  print(f"  -> Failed Profit Check")
                  continue
+            stats["passed_profit"] += 1
             
             # 3. Cash Ratio Check
             cash_ok, cash_ratio = self.check_cash_ratio(corp_code)
             if not cash_ok:
                 print(f"  -> Failed Cash Ratio Check: {cash_ratio}")
                 continue
+            stats["passed_cash"] += 1
 
             # 4. Shareholder Check
             share_ok, share_sum = self.check_shareholder_ownership(corp_code)
             if not share_ok:
                 print(f"  -> Failed Shareholder Check: {share_sum}%")
                 continue
+            stats["passed_shareholder"] += 1
 
             # If all passed
             print(f"  -> PASSED ALL CHECKS!")
@@ -56,7 +68,8 @@ class Screener:
                 "shareholder_stake": share_sum
             })
         
-        return candidates
+        stats["final_candidates"] = len(candidates)
+        return candidates, stats
 
     def check_pbr(self, ticker):
         fund = self.market.get_fundamental(ticker)
@@ -64,13 +77,13 @@ class Screener:
             return False, "No Data"
         try:
             pbr = float(fund["PBR"])
-            return (pbr <= 0.2), pbr
+            return (pbr <= 0.6), pbr
         except:
             return False, "Error"
 
     def check_consecutive_profit(self, corp_code):
-        # Check last 5 years: 2019~2023 (assuming we are in early 2026, 2024 might be out, but let's check available)
-        years = [2019, 2020, 2021, 2022, 2023]
+        # Check last 5 years: 2020~2024 (assuming we are in early 2026, 2024 might be out, but let's check available)
+        years = [2020, 2021, 2022, 2023, 2024]
         profit_history = {}
         
         for year in years:

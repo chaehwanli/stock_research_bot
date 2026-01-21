@@ -60,34 +60,48 @@ def main():
         tickers = market.get_all_stocks()
         print(f"Scanning {len(tickers)} tickers (MOCK)...")
         
-    candidates = screener.run_screening(tickers)
+    candidate_list, stats = screener.run_screening(tickers)
     
-    if not candidates:
-        print("No candidates found.")
-        notifier.send_message("Deep Value Bot: No candidates found today.")
-        return
-
     # 3. LLM Analysis & Reporting
-    full_report = f"Subject: Deep Value Asset Stock Report ({datetime.now().strftime('%Y-%m-%d')})\n\n"
-    full_report += f"Found {len(candidates)} candidates.\n\n"
+    print(f"Found {len(candidate_list)} candidates.")
     
-    for candidate in candidates:
+    llm_reports = []
+    for candidate in candidate_list:
         print(f"Analyzing {candidate['name']}...")
         report = llm.analyze_company(candidate, REPORT_PROMPT)
         
         # If LLM fails (e.g. quota), use fallback text
         if "Error" in report:
-            report = f"# Report for {candidate['name']}\n(LLM Analysis Failed: {report})\n"
-            report += f"PBR: {candidate['pbr']}, Cash Ratio: {candidate['cash_ratio']:.2%}"
+            fallback = f"### {candidate['name']} (Analysis Failed)\nError: {report}\n\n"
+            fallback += f"- PBR: {candidate['pbr']}\n- Cash Ratio: {candidate['cash_ratio']:.2%}"
+            llm_reports.append(fallback)
+        else:
+            llm_reports.append(report)
 
-        full_report += report + "\n\n" + ("="*20) + "\n\n"
-
+    # Generate Markdown Report
+    from common_modules.reporting.report_generator import ReportGenerator
+    reporter = ReportGenerator()
+    full_report = reporter.generate_markdown_report(stats, candidate_list, llm_reports)
+    
     # 4. Notification
     print("Sending Notification...")
-    notifier.send_message(full_report)
+    notifier.send_message(f"Deep Value Bot: Found {len(candidate_list)} candidates. Report generated.")
+    # Send full report as file or split message? Telegram has limit.
+    # Let's send summary to Telegram
+    summary_msg = f"Deep Value Bot Report ({datetime.now().strftime('%Y-%m-%d')})\n"
+    summary_msg += f"Scanned: {stats['total_scanned']}, Candidates: {stats['final_candidates']}\n\n"
+    for c in candidate_list:
+        summary_msg += f"- {c['name']} ({c['ticker']}): PBR {c['pbr']}\n"
+    notifier.send_message(summary_msg)
+
+    # 5. Publish to Wiki
+    from common_modules.publishing.wiki_publisher import WikiPublisher
+    publisher = WikiPublisher()
+    page_title = f"Report_{datetime.now().strftime('%Y-%m-%d')}"
+    publisher.publish_report(full_report, page_title)
     
     # Save CSV
-    csv_file = save_results_to_csv(candidates)
+    csv_file = save_results_to_csv(candidate_list)
     # notifier.send_file(csv_file) # Optional: send CSV
 
     print(">>> Job Completed.")
