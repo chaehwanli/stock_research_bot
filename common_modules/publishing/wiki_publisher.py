@@ -77,7 +77,13 @@ class WikiPublisher:
                 return public_url if public_url else True
             else:
                 print("No changes to publish.")
-                return True
+                # Still try to construct URL as the page exists
+                public_url = ""
+                if self.repo_url and "github.com" in self.repo_url:
+                    base_url = self.repo_url.replace(".wiki.git", "/wiki").replace(".git", "/wiki")
+                    page_url_segment = page_title.replace(' ', '_')
+                    public_url = f"{base_url}/{page_url_segment}"
+                return public_url if public_url else True
 
         except Exception as e:
             print(f"Failed to publish to Wiki: {e}")

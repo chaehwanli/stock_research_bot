@@ -130,7 +130,8 @@ def main():
     # 4. Publish to Wiki (First, to get the link)
     from common_modules.publishing.wiki_publisher import WikiPublisher
     publisher = WikiPublisher()
-    page_title = f"Bluechip_Report_{datetime.now().strftime('%Y-%m-%d')}"
+    # Add time to avoid overlap
+    page_title = f"Bluechip_Report_{datetime.now().strftime('%Y-%m-%d_%H%M')}"
     wiki_url = publisher.publish_report(full_report, page_title)
     
     # 5. Notification

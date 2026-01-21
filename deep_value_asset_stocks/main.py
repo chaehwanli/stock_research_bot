@@ -83,27 +83,28 @@ def main():
     reporter = ReportGenerator()
     full_report = reporter.generate_markdown_report(stats, candidate_list, llm_reports)
     
-    # 4. Notification
+    # 4. Publish to Wiki (First, to get the link)
+    from common_modules.publishing.wiki_publisher import WikiPublisher
+    publisher = WikiPublisher()
+    # Add time to avoid overlap: Report_YYYY-MM-DD_HHMM
+    page_title = f"Report_{datetime.now().strftime('%Y-%m-%d_%H%M')}"
+    wiki_url = publisher.publish_report(full_report, page_title)
+    
+    # 5. Notification
     print("Sending Notification...")
-    notifier.send_message(f"Deep Value Bot: Found {len(candidate_list)} candidates. Report generated.")
-    # Send full report as file or split message? Telegram has limit.
-    # Let's send summary to Telegram
+    # Summary message construction
     summary_msg = f"Deep Value Bot Report ({datetime.now().strftime('%Y-%m-%d')})\n"
     summary_msg += f"Scanned: {stats['total_scanned']}, Candidates: {stats['final_candidates']}\n\n"
     for c in candidate_list:
         summary_msg += f"- {c['name']} ({c['ticker']}): PBR {c['pbr']}\n"
+    
+    if wiki_url and isinstance(wiki_url, str):
+        summary_msg += f"\n[Full Report]({wiki_url})"
+        
     notifier.send_message(summary_msg)
 
-    # 5. Publish to Wiki
-    from common_modules.publishing.wiki_publisher import WikiPublisher
-    publisher = WikiPublisher()
-    page_title = f"Report_{datetime.now().strftime('%Y-%m-%d')}"
-    publisher.publish_report(full_report, page_title)
-    
     # Save CSV
     csv_file = save_results_to_csv(candidate_list)
-    # notifier.send_file(csv_file) # Optional: send CSV
-
     print(">>> Job Completed.")
 
 if __name__ == "__main__":
