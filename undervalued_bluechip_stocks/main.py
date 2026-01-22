@@ -114,20 +114,42 @@ def main():
 
     # Create Custom Markdown Report
     full_report = f"# Undervalued Bluechip Report ({datetime.now().strftime('%Y-%m-%d')})\n\n"
-    full_report += f"**Scanned**: {stats['scanned']} | **Passed Quant**: {stats['passed_quant']} | **Final Candidates**: {stats['passed_final']}\n\n"
     
-    full_report += "## Top Candidates\n"
+    # helper for rate
+    def calc_rate(val, total):
+        if total == 0: return "0.0"
+        return f"{(val/total)*100:.1f}"
+
+    scanned = stats.get('scanned', 0)
+    passed_quant = stats.get('passed_quant', 0)
+    analyzed_llm = stats.get('analyzed_llm', passed_quant)
+    passed_final = stats.get('passed_final', 0)
+
+    full_report += "## 1. Screening Summary (Funnel)\n"
+    full_report += "| Stage | Count | Pass Rate |\n"
+    full_report += "|---|---|---|\n"
+    full_report += f"| Total Scanned | {scanned} | 100% |\n"
+    full_report += f"| Passed Quant (PER<20, PBR<1.5) | {passed_quant} | {calc_rate(passed_quant, scanned)}% |\n"
+    if analyzed_llm != passed_quant:
+        full_report += f"| Selected for LLM (Sampled) | {analyzed_llm} | - |\n"
+    full_report += f"| **Final Candidates** (Grade B+) | **{passed_final}** | {calc_rate(passed_final, analyzed_llm)}% |\n\n"
+    
+    full_report += "## 2. Top Candidates\n"
     full_report += "| Ticker | Name | Grade | Score | PER | PBR |\n"
     full_report += "|---|---|---|---|---|---|\n"
     for fc in formatted_candidates:
         full_report += f"| {fc['ticker']} | {fc['name']} | **{fc['grade']}** | {fc['score']} | {fc['per']} | {fc['pbr']} |\n"
+    if not formatted_candidates:
+        full_report += "| - | None | - | - | - | - |\n"
     full_report += "\n"
     
-    full_report += "## Detailed Analysis\n\n"
+    full_report += "## 3. Detailed Analysis\n\n"
+    if not llm_reports:
+        full_report += "No candidates found to analyze.\n"
     for report in llm_reports:
         full_report += report + "\n---\n\n"
 
-    # 4. Publish to Wiki (First, to get the link)
+    # 4.Publish to Wiki
     from common_modules.publishing.wiki_publisher import WikiPublisher
     publisher = WikiPublisher()
     # Add time to avoid overlap

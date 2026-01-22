@@ -37,6 +37,8 @@ class BluechipScreener:
         if len(quant_pass_tickers) > 20:
             print("Warning: Limiting L2 screening to 20 random survivors to check costs.")
             quant_pass_tickers = quant_pass_tickers[:20]
+        
+        stats["analyzed_llm"] = len(quant_pass_tickers)
 
         for ticker in quant_pass_tickers:
             result = self.evaluate_company(ticker)
@@ -132,9 +134,19 @@ class BluechipScreener:
             total_score = score_per + score_pbr + qual_score
             
             # Grade
-            if total_score > 80: grade = 'A'
-            elif total_score >= 70: grade = 'B'
-            elif total_score >= 50: grade = 'C'
+            # Grade
+            # Max Score Calculation:
+            # PER (20) + PBR (5) = 25
+            # Qual (35) [Dup(5)+Brand(5)+Prof(5)+Grow(10)+Mgmt(10)]
+            # Total Max = 60.
+            # Adjusted Thresholds:
+            # A (90%): 54+
+            # B (80%): 48+
+            # C (50%): 30+
+            
+            if total_score >= 54: grade = 'A'
+            elif total_score >= 48: grade = 'B'
+            elif total_score >= 30: grade = 'C'
             else: grade = 'D'
             
             return {
