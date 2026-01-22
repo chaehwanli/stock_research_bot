@@ -205,6 +205,16 @@ class MarketDataFetcher:
             return "Unknown"
 
         try:
-            return stock.get_market_ticker_name(ticker)
+            name = stock.get_market_ticker_name(ticker)
+            # Check if it returned a DataFrame (known pykrx issue sometimes)
+            if isinstance(name, pd.DataFrame):
+                 if not name.empty:
+                      return str(name.iloc[0, 0])
+                 else:
+                      return str(ticker)
+            if not name:
+                 return str(ticker)
+            return str(name)
         except:
-            return None
+            # Fallback to ticker if name fetch fails
+            return str(ticker)

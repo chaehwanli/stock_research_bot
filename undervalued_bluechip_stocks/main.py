@@ -59,9 +59,9 @@ def main():
     candidates, stats = screener.run_screening(tickers)
     
     if not candidates:
-        print("No candidates found.")
-        notifier.send_message("Bluechip Bot: No candidates found today.")
-        return
+        print("No candidates found. Proceeding to report empty results.")
+        # Do not return, let it publish the empty report
+
 
     # 3. Reporting
     print(f"Found {len(candidates)} candidates.")

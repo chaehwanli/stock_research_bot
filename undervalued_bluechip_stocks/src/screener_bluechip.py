@@ -159,4 +159,6 @@ class BluechipScreener:
 
         except Exception as e:
             print(f"Error evaluating {corp_name}: {e}")
+            if 'response_json_str' in locals():
+                 print(f"Failed JSON: {response_json_str}")
             return None
