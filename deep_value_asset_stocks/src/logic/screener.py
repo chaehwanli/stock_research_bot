@@ -174,7 +174,7 @@ class Screener:
             # Dart API returns list. Usually sum of unique holders.
             # Let's assume the sum is correct.
             
-            return (total_stake >= 50.0), total_stake
+            return (total_stake >= 30.0), total_stake
             
         except Exception as e:
             return False, f"Error: {e}"

@@ -27,7 +27,7 @@ class ReportGenerator:
         report += f"| Passed PBR (<= 0.6) | {pbr} | {self._pct(pbr, total)} |\n"
         report += f"| Passed Profit (5yrs > 0) | {profit} | {self._pct(profit, pbr)} |\n"
         report += f"| Passed Cash Ratio (>= 30%) | {cash} | {self._pct(cash, profit)} |\n"
-        report += f"| Passed Shareholder (>= 50%) | {holder} | {self._pct(holder, cash)} |\n"
+        report += f"| Passed Shareholder (>= 30%) | {holder} | {self._pct(holder, cash)} |\n"
         report += f"| **Final Candidates** | **{stats.get('final_candidates', 0)}** | - |\n\n"
         
         # 2. Candidate List

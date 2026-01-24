@@ -56,9 +56,9 @@ def main():
         tickers = market.get_all_stocks()
     
     # Run Screener
-    candidates, stats = screener.run_screening(tickers)
+    candidates, all_results, stats = screener.run_screening(tickers)
     
-    if not candidates:
+    if not all_results:
         print("No candidates found. Proceeding to report empty results.")
         # Do not return, let it publish the empty report
 
@@ -75,7 +75,11 @@ def main():
     llm_reports = []
     formatted_candidates = []
     
-    for c in candidates:
+    
+    # Sort all results by Total Score descending
+    all_results.sort(key=lambda x: x['total_score'], reverse=True)
+    
+    for c in all_results:
         # Format candidate for ReportGenerator (needs specific keys)
         # ReportGenerator expects: ticker, name, pbr, cash_ratio, shareholder_stake
         # Our Bluechip candidate has: ticker, name, score_per, score_pbr, score_qual, total_score, grade, details
@@ -92,25 +96,28 @@ def main():
         report_section = f"### {c['name']} ({c['ticker']}) - Grade {c['grade']} ({c['total_score']}pts)\n"
         report_section += f"- **Stats**: PER {details['per']}, PBR {details['pbr']}\n"
         report_section += f"- **Scores**: PER+PBR (Quant) {c['score_per']+c['score_pbr']} + Qual {c['score_qual']}\n"
-        report_section += f"- **Qual Breakdown**:\n"
-        report_section += f"  - Duplicate Listing: {details['duplicate_listing']}pts\n"
-        report_section += f"  - Global Brand: {details['global_brand']}pts\n"
-        report_section += f"  - Profit Sustainability: {details['profit_sustainability']}pts\n"
-        report_section += f"  - Future Growth: {details['growth_potential']}pts\n"
-        report_section += f"  - Management: {details['management']}pts\n"
+        report_section += f"- **Qual Breakdown**:\n\n"
+        report_section += f"| Criterion | Score |\n"
+        report_section += f"|---|---|\n"
+        report_section += f"| Duplicate Listing | {details['duplicate_listing']}pts |\n"
+        report_section += f"| Global Brand | {details['global_brand']}pts |\n"
+        report_section += f"| Profit Sustainability | {details['profit_sustainability']}pts |\n"
+        report_section += f"| Future Growth | {details['growth_potential']}pts |\n"
+        report_section += f"| Management | {details['management']}pts |\n"
         report_section += f"\n**LLM Reasoning**:\n{reasoning}\n"
         
         llm_reports.append(report_section)
         
-        # Candidate table data
-        formatted_candidates.append({
-            "ticker": c['ticker'],
-            "name": c['name'],
-            "grade": c['grade'],
-            "score": c['total_score'],
-            "per": details['per'],
-            "pbr": details['pbr']
-        })
+        # Candidate table data - ONLY for Top Candidates (Grade A/B)
+        if c['grade'] in ['A', 'B']:
+            formatted_candidates.append({
+                "ticker": c['ticker'],
+                "name": c['name'],
+                "grade": c['grade'],
+                "score": c['total_score'],
+                "per": details['per'],
+                "pbr": details['pbr']
+            })
 
     # Create Custom Markdown Report
     full_report = f"# Undervalued Bluechip Report ({datetime.now().strftime('%Y-%m-%d')})\n\n"
@@ -134,16 +141,20 @@ def main():
         full_report += f"| Selected for LLM (Sampled) | {analyzed_llm} | - |\n"
     full_report += f"| **Final Candidates** (Grade B+) | **{passed_final}** | {calc_rate(passed_final, analyzed_llm)}% |\n\n"
     
-    full_report += "## 2. Top Candidates\n"
-    full_report += "| Ticker | Name | Grade | Score | PER | PBR |\n"
-    full_report += "|---|---|---|---|---|---|\n"
-    for fc in formatted_candidates:
-        full_report += f"| {fc['ticker']} | {fc['name']} | **{fc['grade']}** | {fc['score']} | {fc['per']} | {fc['pbr']} |\n"
-    if not formatted_candidates:
-        full_report += "| - | None | - | - | - | - |\n"
+    full_report += "## 2. Selected for LLM List\n"
+    full_report += "| Ticker | Name | Grade | Quant Score (PER+PBR) | PER | PBR | Reason by LLM |\n"
+    full_report += "|---|---|---|---|---|---|---|\n"
+    for c in all_results:
+        # Quant Score = score_per + score_pbr
+        q_score = c['score_per'] + c['score_pbr']
+        reason = c['details'].get('llm_reasoning', 'No reasoning').replace('\n', ' ').replace('|', '-')[:100] + "..." # Truncate for table
+        full_report += f"| {c['ticker']} | {c['name']} | {c['grade']} | {q_score} | {c['details']['per']} | {c['details']['pbr']} | {reason} |\n"
+    
     full_report += "\n"
     
-    full_report += "## 3. Detailed Analysis\n\n"
+    full_report += "\n"
+    
+    full_report += "\n## 3. Detailed Analysis\n\n"
     if not llm_reports:
         full_report += "No candidates found to analyze.\n"
     for report in llm_reports:

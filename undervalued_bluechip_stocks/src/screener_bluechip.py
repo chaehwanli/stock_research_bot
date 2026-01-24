@@ -11,6 +11,7 @@ class BluechipScreener:
     def run_screening(self, tickers):
         print(f"Starting Bluechip Screening for {len(tickers)} tickers...")
         candidates = []
+        all_results = []
         stats = {
             "scanned": len(tickers),
             "passed_quant": 0,
@@ -20,55 +21,89 @@ class BluechipScreener:
         # 1. Level 1: Quant Filter
         quant_pass_tickers = []
         for ticker in tickers:
-            if self._check_quant_criteria(ticker):
-                quant_pass_tickers.append(ticker)
+            passed, q_score, q_details = self._check_quant_and_score(ticker)
+            if passed:
+                quant_pass_tickers.append({
+                    "ticker": ticker,
+                    "quant_score": q_score,
+                    "details": q_details
+                })
         
         stats["passed_quant"] = len(quant_pass_tickers)
         print(f"Passed Quant Filter: {len(quant_pass_tickers)} companies")
-
+            
         # 2. Level 2: Qual Analysis via LLM
         # Limit to top 5 for testing/mock if list is huge
         if len(quant_pass_tickers) > 5 and self.market.use_mock:
-             print("Mock Mode: Limiting to first 5 for speed.")
+             print("Mock Mode: Limiting to top 5 by score for speed.")
+             quant_pass_tickers.sort(key=lambda x: x['quant_score'], reverse=True)
              quant_pass_tickers = quant_pass_tickers[:5]
         
         # Real mode limit to avoid huge API costs if too many pass? 
         # For now, let's process max 20.
         if len(quant_pass_tickers) > 20:
-            print("Warning: Limiting L2 screening to 20 random survivors to check costs.")
+            print("Sort by Quant Score (PER+PBR) and limit to top 20.")
+            # Sort by total_score descending
+            quant_pass_tickers.sort(key=lambda x: x['quant_score'], reverse=True)
             quant_pass_tickers = quant_pass_tickers[:20]
         
         stats["analyzed_llm"] = len(quant_pass_tickers)
 
-        for ticker in quant_pass_tickers:
-            result = self.evaluate_company(ticker)
+        for candidate in quant_pass_tickers:
+            ticker = candidate['ticker']
+            pre_calc_score = candidate['quant_score']
+            pre_calc_details = candidate['details']
+            
+            result = self.evaluate_company(ticker, pre_calc_score, pre_calc_details)
             if result:
                 print(f"  -> {result['name']}: Total Score {result['total_score']} (Grade {result['grade']})")
+                all_results.append(result)
                 if result['grade'] in ['A', 'B']:
                     candidates.append(result)
 
+                
         stats["passed_final"] = len(candidates)
-        return candidates, stats
+        return candidates, all_results, stats
 
-    def _check_quant_criteria(self, ticker):
+    def _calculate_quant_score(self, per, pbr):
+        score_per = 0
+        if per < 5: score_per = 20
+        elif per < 8: score_per = 15
+        elif per < 10: score_per = 10
+        else: score_per = 5 
+
+        score_pbr = 0
+        if pbr < 0.3: score_pbr = 5
+        elif pbr < 0.6: score_pbr = 4
+        elif pbr < 1.0: score_pbr = 3
+        elif pbr <= 1.0: score_pbr = 3
+        else: score_pbr = 0
+        
+        return score_per, score_pbr
+
+    def _check_quant_and_score(self, ticker):
         """
-        Broad filter: PER < 20, PBR < 1.5
+        Check (PER < 20, PBR < 1.5) AND Calculate Score
+        Returns: (bool, total_quant_score, details_dict)
         """
         try:
             fund = self.market.get_fundamental(ticker)
-            if fund is None or fund.empty: return False
+            if fund is None or fund.empty: return False, 0, {}
             
             per = float(fund.get('PER', 100))
             pbr = float(fund.get('PBR', 100))
             
             # Simple broad filter
             if 0 < per < 20 and 0 < pbr < 1.5:
-                return True
+                s_per, s_pbr = self._calculate_quant_score(per, pbr)
+                total = s_per + s_pbr
+                return True, total, {"per": per, "pbr": pbr, "score_per": s_per, "score_pbr": s_pbr}
+                
         except:
-            return False
-        return False
+            return False, 0, {}
+        return False, 0, {}
 
-    def evaluate_company(self, ticker):
+    def evaluate_company(self, ticker, pre_calc_score=None, pre_calc_details=None):
         corp_name = self.market.get_stock_name(ticker)
         print(f"Evaluating {corp_name} ({ticker})...")
         
@@ -80,20 +115,14 @@ class BluechipScreener:
         pbr = float(fund.get('PBR', 0))
         
         # Calculate Quant Scores
+        if pre_calc_score is None:
+             score_per, score_pbr = self._calculate_quant_score(per, pbr)
+        else:
+             score_per = pre_calc_details['score_per']
+             score_pbr = pre_calc_details['score_pbr']
+
         quant_reasoning = []
-        score_per = 0
-        if per < 5: score_per = 20
-        elif per < 8: score_per = 15
-        elif per < 10: score_per = 10
-        else: score_per = 5 # anything >= 10
         quant_reasoning.append(f"PER {per} -> {score_per}pts")
-        
-        score_pbr = 0
-        if pbr < 0.3: score_pbr = 5
-        elif pbr < 0.6: score_pbr = 4
-        elif pbr < 1.0: score_pbr = 3
-        elif pbr <= 1.0: score_pbr = 3 # Handle potential rounding or exact 1.0
-        else: score_pbr = 0
         quant_reasoning.append(f"PBR {pbr} -> {score_pbr}pts")
         
         # Get Financial History
