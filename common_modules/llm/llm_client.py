@@ -1,4 +1,5 @@
 import os
+import time
 from google import genai
 from dotenv import load_dotenv
 
@@ -14,7 +15,28 @@ class LLMClient:
             self.client = None
         else:
             self.client = genai.Client(api_key=self.api_key)
-            self.model_id = 'gemini-2.0-flash'
+            self.model_id = 'gemini-3-pro-preview'
+
+    def _call_with_retry(self, func, *args, **kwargs):
+        """
+        Retries the function call if it fails with a 429 error.
+        Max retries: 4. Initial delay: 15s.
+        """
+        max_retries = 4
+        delay = 15 
+        
+        for attempt in range(max_retries + 1):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                error_str = str(e)
+                if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
+                    if attempt < max_retries:
+                        print(f"LLM 429 Limit hit. Waiting {delay}s before retry ({attempt+1}/{max_retries})...")
+                        time.sleep(delay)
+                        delay *= 2 # Exponential backoff
+                        continue
+                raise e # Re-raise if not 429 or max retries exceeded
 
     def analyze_company(self, company_data, prompt_template):
         """
@@ -34,7 +56,8 @@ class LLMClient:
         
         try:
             # New SDK usage: client.models.generate_content
-            response = self.client.models.generate_content(
+            response = self._call_with_retry(
+                self.client.models.generate_content,
                 model=self.model_id,
                 contents=prompt
             )
@@ -50,7 +73,8 @@ class LLMClient:
             return "Error: Client not initialized"
             
         try:
-            response = self.client.models.generate_content(
+            response = self._call_with_retry(
+                self.client.models.generate_content,
                 model=self.model_id,
                 contents=prompt
             )

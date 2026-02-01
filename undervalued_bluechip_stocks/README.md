@@ -107,3 +107,17 @@ Create a research/screening bot that automatically identifies "Undervalued Bluec
 매핑되지 않는 항목에 대한 평가 방안 정리
 점수 계산 로직 구현
 결과를 WIKI에 게시하고, Telegram으로 알림을 보내는 로직 구현
+
+## LLM Service Implementation Detail
+To ensure stable operation despite API limitations, the LLM client includes robust error handling:
+
+- **Model**: Uses `gemini-3-pro-preview` (Configurable in `common_modules/llm/llm_client.py`).
+- **Rate Limit Handling**:
+    - Automatically detects `429 RESOURCE_EXHAUSTED` errors.
+    - Implements **Exponential Backoff** retry logic:
+        - Retries up to 4 times.
+        - Delays: 15s -> 30s -> 60s -> 120s.
+        - Total wait capacity > 225s to accommodate quota reset times.
+- **Timeouts**: Default client timeout is used, but long-running generation is handled via the retry mechanism if transient network errors occur.
+- https://ai.dev/rate-limit 무료 계정 상태임 (2026년 1월 26일 기준)
+- https://ai.google.dev/gemini-api/docs/rate-limits
