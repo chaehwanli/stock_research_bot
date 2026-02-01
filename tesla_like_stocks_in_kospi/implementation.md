@@ -112,3 +112,21 @@ Refined filtering logic based on user feedback.
 - **Result**: ETFs/ETNs excluded. Heavyweights like 'Hyundai Glovis' found.
 - **Tesla**: Ranked #9.
 
+
+## [2026-02-01:23:25] Refinement: 1-Year Consistent Volatility
+
+Transformed the screening logic to evaluate "Consistent Volatility" over a full 1-year period (52 weeks).
+
+### Changes
+1.  **Data Duration**: Extended fetching from 14 weeks to **53 weeks**.
+2.  **Minimum History**: Raised requirement from 60 days to **200 days**.
+3.  **Metric Windows**:
+    - **Weekly Vol**: 12 weeks -> **52 weeks**.
+    - **Daily Vol**: 20 days -> **250 days**.
+    - **RSI Vol**: 14 days -> **250 days**.
+    - **ATR Ratio**: Latest -> **250-day Average**.
+
+### Verification (`--limit 100`)
+- **Top Candidates**: 'Hanwha Systems' (#1), 'Hyundai Rotem' (#2), 'Isu Petasys' (#3).
+- **Tesla**: Ranked #4.
+- **Interpretation**: Validated that the logic identifies stocks with sustained high volatility over the past year.

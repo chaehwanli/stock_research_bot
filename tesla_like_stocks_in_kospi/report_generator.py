@@ -41,7 +41,7 @@ class TeslaReportGenerator:
 
         # 3. Top Candidates
         report += "## 2. Top Candidates (Ranked by TVS)\n"
-        report += "Criteria: Hard Filter (Avg Amt > 1000억 & No ETF/ETN) -> Scoring (Daily Vol 40% + RSI Vol 30% + Weekly Vol 30%)\n\n"
+        report += "Criteria: Hard Filter (Avg Amt > 1000억 & No ETF/ETN) -> Scoring (1-Year Consistent Volatility)\n\n"
         
         report += "| Rank | Ticker | Name | TVS | Daily Vol | RSI Std | Weekly Vol | Avg Amt (억) |\n"
         report += "|---|---|---|---|---|---|---|---|\n"

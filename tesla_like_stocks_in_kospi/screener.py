@@ -12,7 +12,7 @@ class TeslaLikeScreener:
         self.use_mock = use_mock
         # Timeframes
         self.end_date_dt = datetime.now()
-        self.start_date_dt = self.end_date_dt - timedelta(weeks=14) # ~3.5 months (enough for 12 weeks + buffer)
+        self.start_date_dt = self.end_date_dt - timedelta(weeks=53) # ~1 year + buffer
         
         self.start_date_str = self.start_date_dt.strftime("%Y%m%d")
         self.end_date_str = self.end_date_dt.strftime("%Y%m%d")
@@ -168,7 +168,7 @@ class TeslaLikeScreener:
         df = df.rename(columns=rename_map)
         
         # 1. Check Data Length
-        if len(df) < 60: # need at least 60 days
+        if len(df) < 200: # need at least ~1 year (250 trading days, allow some missing)
             # print(f"[{ticker}] Too short: {len(df)}")
             return None
             
@@ -193,26 +193,26 @@ class TeslaLikeScreener:
 
         # 3. Calculate Metrics
         
-        # A. Weekly Volatility (12 weeks)
+        # A. Weekly Volatility (1 year)
         # Resample to weekly
         df_weekly = df['Close'].resample('W-FRI').last()
         weekly_returns = df_weekly.pct_change().dropna()
-        weekly_std = weekly_returns.iloc[-12:].std() # Last 12 weeks
+        weekly_std = weekly_returns.iloc[-52:].std() # Last 52 weeks
         
         if pd.isna(weekly_std): return None
 
-        # B. Daily Volatility & ATR
+        # B. Daily Volatility & ATR (1 year)
         daily_returns = df['Close'].pct_change().dropna()
-        daily_std = daily_returns.iloc[-20:].std() # Last 20 days
+        daily_std = daily_returns.iloc[-250:].std() # Last 250 days
         
         atr_ratio_series = self._calculate_atr_ratio(df)
-        atr_ratio = atr_ratio_series.iloc[-1] # Latest ATR Ratio
+        atr_ratio = atr_ratio_series.iloc[-250:].mean() # Average ATR Ratio over last 250 days
         
         if pd.isna(daily_std) or pd.isna(atr_ratio): return None
         
-        # C. RSI Volatility (14 days)
+        # C. RSI Volatility (1 year)
         rsi = self._calculate_rsi(df['Close'], period=14)
-        rsi_std = rsi.iloc[-14:].std() # Last 14 days standard deviation of RSI
+        rsi_std = rsi.iloc[-250:].std() # Last 250 days standard deviation of RSI
         
         if pd.isna(rsi_std): return None
 
