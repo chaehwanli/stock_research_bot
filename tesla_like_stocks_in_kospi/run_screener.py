@@ -19,7 +19,7 @@ def main():
     print(" 🚀 KOSPI 'Tesla-like' Stock Screener")
     print("=" * 60)
     print("Logic based on: tesla_like_stocks_in_kospi/README.md")
-    print("- Hard Filter: Avg Daily Amount > 100억 KRW")
+    print("- Hard Filter: Avg Daily Amount > 1000억 KRW")
     print("- Scoring: Daily Vol (40%) + RSI Vol (30%) + Weekly Vol (30%)")
     print("-" * 60)
 

@@ -18,7 +18,7 @@ class TeslaReportGenerator:
         # 2. Executive Summary
         if df_results.empty:
             report += "## Summary\n"
-            report += "No candidates found satisfying the criteria (Liquidity > 100억).\n"
+            report += "No candidates found satisfying the criteria (Liquidity > 1000억, No ETF/ETN).\n"
             return report
             
         top_count = len(df_results)
@@ -41,7 +41,7 @@ class TeslaReportGenerator:
 
         # 3. Top Candidates
         report += "## 2. Top Candidates (Ranked by TVS)\n"
-        report += "Criteria: Hard Filter (Avg Amt > 100억) -> Scoring (Daily Vol 40% + RSI Vol 30% + Weekly Vol 30%)\n\n"
+        report += "Criteria: Hard Filter (Avg Amt > 1000억 & No ETF/ETN) -> Scoring (Daily Vol 40% + RSI Vol 30% + Weekly Vol 30%)\n\n"
         
         report += "| Rank | Ticker | Name | TVS | Daily Vol | RSI Std | Weekly Vol | Avg Amt (억) |\n"
         report += "|---|---|---|---|---|---|---|---|\n"

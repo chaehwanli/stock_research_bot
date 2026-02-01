@@ -18,14 +18,44 @@ class TeslaLikeScreener:
         self.end_date_str = self.end_date_dt.strftime("%Y%m%d")
 
     def fetch_kospi_tickers(self):
-        """Fetch all KOSPI tickers."""
+        """Fetch all KOSPI tickers, excluding ETFs, ETNs, SPACs, and Preferred Stocks via Name."""
         print("Fetching KOSPI tickers...")
-        return self.fetcher.get_all_stocks(market="KOSPI")
+        
+        # 1. Get All KOSPI Tickers
+        all_tickers = self.fetcher.get_all_stocks(market="KOSPI")
+        
+        filtered_tickers = []
+        
+        # Keywords to exclude
+        etf_brands = ["KODEX", "TIGER", "KBSTAR", "ACE", "HANARO", "SOL", "KOSEF", "ARIRANG", 
+                      "TIMEFOLIO", "WOORI", "HANA", "MIGHTY", "FOCUS", "TREX", "HK", "PLUS", "TRUSTON"]
+        
+        for ticker in all_tickers:
+            name = self.fetcher.get_stock_name(ticker)
+            
+            # 1. Check ETF Brands
+            is_etf = any(brand in name for brand in etf_brands)
+            
+            # 2. Check ETN
+            is_etn = "ETN" in name
+            
+            # 3. Check SPAC
+            is_spac = "스팩" in name
+            
+            # 4. Check Preferred Stock (Ends with '우', '우B', '우(전환)', etc.)
+            # Simple heuristic: Ends with '우' or '우B' or contains '우('
+            is_preferred = name.endswith("우") or name.endswith("우B") or "우(" in name
+            
+            if not (is_etf or is_etn or is_spac or is_preferred):
+                filtered_tickers.append(ticker)
+        
+        print(f"  Total: {len(all_tickers)} -> Filtered (Common Stocks Only): {len(filtered_tickers)}")
+        return filtered_tickers
 
-    def filter_by_liquidity(self, tickers, min_avg_amount_won=10_000_000_000):
+    def filter_by_liquidity(self, tickers, min_avg_amount_won=100_000_000_000):
         """
         Filter tickers by Average Daily Trading Value (20d).
-        Hard Filter: > 100억 KRW
+        Hard Filter: > 1000억 KRW
         """
         print(f"Filtering {len(tickers)} tickers by liquidity (Min {min_avg_amount_won/1e8}억)...")
         passed_tickers = []
@@ -120,7 +150,7 @@ class TeslaLikeScreener:
         atr_ratio = atr / df['Close']
         return atr_ratio
 
-    def analyze_ticker(self, ticker, df):
+    def analyze_ticker(self, ticker, df, skip_liquidity_check=False):
         """
         Calculate metrics for a single ticker dataframe.
         Returns metrics dict or None if insufficient data/liquidity.
@@ -154,8 +184,9 @@ class TeslaLikeScreener:
              # print(f"[{ticker}] No trading value column. Cols: {df.columns}")
              avg_amount = (recent_20['Close'] * recent_20['Volume']).mean()
 
-        if avg_amount < 10_000_000_000: # 100억
-            return None
+        if not skip_liquidity_check:
+            if avg_amount < 100_000_000_000: # 1000억
+                return None
         else:
             # Debug: Passed liquidity
             pass
@@ -212,7 +243,7 @@ class TeslaLikeScreener:
             name = "Tesla (Benchmark)"
             
             # Analyze
-            metrics = self.analyze_ticker("TSLA", df)
+            metrics = self.analyze_ticker("TSLA", df, skip_liquidity_check=True)
             if metrics:
                 metrics['name'] = name
                 # Adjust liquidity to KRW? Not strictly necessary for scoring (liquidity is filter), 

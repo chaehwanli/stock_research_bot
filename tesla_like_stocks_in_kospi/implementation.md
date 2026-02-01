@@ -78,3 +78,37 @@ Integrated automated reporting capabilities into the screener workflow.
 2.  Generate Markdown Report.
 3.  Publish to Wiki -> Get Public URL.
 4.  Send Telegram Message with Public URL.
+
+## [2026-02-01:22:23] Fix: Import Path Issue in run_screener.py
+
+Fixed `ModuleNotFoundError` when running the script from the `tesla_like_stocks_in_kospi` subdirectory.
+
+### Changes
+- Added `sys.path.append` to `run_screener.py` to dynamically include the project root.
+
+## [2026-02-01:22:30] Successful Real Data Run (Limited)
+
+Executed `run_screener.py --limit 50` to verify end-to-end functionality.
+- **Result**: 5 candidates passed the liquidity filter. Tesla ranked #5.
+- **Wiki**: Successfully updated with real KOSPI data.
+
+## [2026-02-01:22:38] Fix: Stock Name Mapping
+
+Resolved issue where stock names appeared as ticker numbers.
+- **Problem**: `pykrx` returned empty names for some tickers.
+- **Fix**: Implemented caching in `market_fetcher.py` to capture names during Naver crawling.
+
+## [2026-02-01:22:45] Refinement: Filters & Clean-up
+
+Refined filtering logic based on user feedback.
+
+### Changes
+1.  **Liquidity**: Minimum Avg Daily Value increased to **1,000억** KRW.
+2.  **Exclusions**: Excluded ETFs, ETNs, SPACs, and Preferred Stocks using name-based filtering.
+3.  **Tesla Benchmark**: Fixed logic to ensure Tesla (USD) passes the KRW-based liquidity check.
+
+### Verification (`--limit 100`)
+- **Filtered**: 1120 common stocks identified.
+- **Result**: ETFs/ETNs excluded. Heavyweights like 'Hyundai Glovis' found.
+- **Tesla**: Ranked #9.
+
