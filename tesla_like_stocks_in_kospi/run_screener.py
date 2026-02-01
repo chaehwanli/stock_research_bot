@@ -12,6 +12,7 @@ from tesla_like_stocks_in_kospi.screener import TeslaLikeScreener
 def main():
     parser = argparse.ArgumentParser(description="Find Tesla-like high volatility stocks in KOSPI.")
     parser.add_argument("--mock", action="store_true", help="Use mock data for testing")
+    parser.add_argument("--limit", type=int, default=0, help="Limit number of stocks to scan (for testing)")
     args = parser.parse_args()
 
     print("=" * 60)
@@ -25,7 +26,7 @@ def main():
     screener = TeslaLikeScreener(use_mock=args.mock)
     
     try:
-        df = screener.run()
+        df = screener.run(limit=args.limit)
         
         if df.empty:
             print("No results found.")

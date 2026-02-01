@@ -125,23 +125,40 @@ class TeslaLikeScreener:
         Calculate metrics for a single ticker dataframe.
         Returns metrics dict or None if insufficient data/liquidity.
         """
+        # Rename columns if Korean (pykrx standard)
+        rename_map = {
+            '시가': 'Open',
+            '고가': 'High',
+            '저가': 'Low',
+            '종가': 'Close',
+            '거래량': 'Volume',
+            '거래대금': 'Value',
+            '등락률': 'Change'
+        }
+        df = df.rename(columns=rename_map)
+        
         # 1. Check Data Length
         if len(df) < 60: # need at least 60 days
+            # print(f"[{ticker}] Too short: {len(df)}")
             return None
             
         # 2. Check Liquidity (Last 20 days)
         recent_20 = df.iloc[-20:]
-        avg_amount = (recent_20['Close'] * recent_20['Volume']).mean() # Approx if Amount col not present
         
-        # Pykrx returns '거래대금' usually.
-        if '거래대금' in df.columns:
-             avg_amount = recent_20['거래대금'].mean()
-        elif 'Value' in df.columns: # pykrx sometimes English
+        # Determine Amount Column
+        avg_amount = 0
+        if 'Value' in df.columns: 
              avg_amount = recent_20['Value'].mean()
-        # Fallback to Close*Volume if needed (yfinance etc)
-        
+        else:
+             # Fallback
+             # print(f"[{ticker}] No trading value column. Cols: {df.columns}")
+             avg_amount = (recent_20['Close'] * recent_20['Volume']).mean()
+
         if avg_amount < 10_000_000_000: # 100억
             return None
+        else:
+            # Debug: Passed liquidity
+            pass
 
         # 3. Calculate Metrics
         
@@ -206,11 +223,12 @@ class TeslaLikeScreener:
             print(f"Failed to fetch Tesla data: {e}")
         return None
 
-    def run(self):
+    def run(self, limit=None):
         kospi_tickers = self.fetch_kospi_tickers()
         
-        # Limit tickers during dev/test if needed (e.g. random 100)
-        # kospi_tickers = kospi_tickers[:50] 
+        if limit and limit > 0:
+            print(f"Limiting to first {limit} tickers for speed...")
+            kospi_tickers = kospi_tickers[:limit]
         
         print(f"Processing {len(kospi_tickers)} candidates...")
         
@@ -232,7 +250,7 @@ class TeslaLikeScreener:
                 if metrics:
                     results.append(metrics)
             except Exception as e:
-                 # print(f"Err {ticker}: {e}")
+                 print(f"Err {ticker}: {e}")
                  pass
                  
         print(f"  Processed {total}/{total}. Found {len(results)} valid candidates.")
