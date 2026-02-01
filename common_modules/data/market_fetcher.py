@@ -13,6 +13,7 @@ class MarketDataFetcher:
             "005930": {"pbr": 1.2, "market_cap": 400000000000000, "close": 70000},
             "000000": {"pbr": 0.15, "market_cap": 25000000000, "close": 2500} # Deep Value Corp: PBR < 0.2
         }
+        self.ticker_name_cache = {} # Cache for stock names
 
     def get_fundamental(self, ticker, date=None):
         """
@@ -190,7 +191,10 @@ class MarketDataFetcher:
                         if link:
                             code_match = re.search(r'code=(\d+)', link['href'])
                             if code_match:
-                                tickers.append(code_match.group(1))
+                                code = code_match.group(1)
+                                name = link.text.strip()
+                                tickers.append(code)
+                                self.ticker_name_cache[code] = name
                                 
             except Exception as e:
                 print(f"Error scraping Naver Finance (sosok={sosok}): {e}")
@@ -205,6 +209,10 @@ class MarketDataFetcher:
             return "Unknown"
 
         try:
+            # Check cache first (populated by Naver fallback)
+            if ticker in self.ticker_name_cache:
+                return self.ticker_name_cache[ticker]
+
             name = stock.get_market_ticker_name(ticker)
             # Check if it returned a DataFrame (known pykrx issue sometimes)
             if isinstance(name, pd.DataFrame):
