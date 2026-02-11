@@ -11,7 +11,7 @@ venv/
 # Project Output
 results.csv
 *.log
-results/images/*
+*.png
 
 # VS Code
 .vscode/
