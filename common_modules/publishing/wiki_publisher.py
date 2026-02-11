@@ -38,7 +38,7 @@ class WikiPublisher:
         # Local path to clone wiki
         self.local_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../wiki_repo"))
 
-    def publish_report(self, report_content, page_title):
+    def publish_report(self, report_content, page_title, attachments=None):
         if not self.repo_url:
             print("Wiki Repo URL not configured. Skipping publication.")
             return False
@@ -50,6 +50,17 @@ class WikiPublisher:
             filename = f"{page_title.replace(' ', '_')}.md"
             file_path = os.path.join(self.local_path, filename)
             
+            # Copy attachments if any
+            attachment_files = []
+            if attachments:
+                images_dir = os.path.join(self.local_path, "images")
+                os.makedirs(images_dir, exist_ok=True)
+                for attachment in attachments:
+                    if os.path.exists(attachment):
+                        shutil.copy(attachment, images_dir)
+                        att_name = os.path.basename(attachment)
+                        attachment_files.append(os.path.join("images", att_name))
+            
             # Write content
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(report_content)
@@ -58,7 +69,8 @@ class WikiPublisher:
             
             # Commit and Push
             if repo.is_dirty(untracked_files=True):
-                repo.index.add([filename])
+                files_to_add = [filename] + attachment_files
+                repo.index.add(files_to_add)
                 repo.index.commit(f"Add report: {page_title}")
                 original_remote = repo.remote(name='origin')
                 original_remote.push()

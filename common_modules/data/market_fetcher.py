@@ -202,6 +202,32 @@ class MarketDataFetcher:
         # Remove duplicates just in case
         return list(set(tickers))
 
+    def _fetch_name_naver(self, ticker):
+        """
+        Fallback method to fetch stock name from Naver Finance
+        """
+        url = f"https://finance.naver.com/item/main.naver?code={ticker}"
+        try:
+            res = requests.get(url)
+            soup = BeautifulSoup(res.text, 'html.parser')
+            
+            # Selector for name: .wrap_company h2 a
+            name_elem = soup.select_one(".wrap_company h2 a")
+            if name_elem:
+                return name_elem.text.strip()
+            
+            # Alternative selector just in case
+            name_elem = soup.select_one(".wrap_company h2")
+            if name_elem:
+                 # Check if it has 'a' tag inside, if not take text
+                 if not name_elem.find('a'):
+                     return name_elem.text.strip()
+            
+            return None
+        except Exception as e:
+            print(f"Error fetching Naver Finance name for {ticker}: {e}")
+            return None
+
     def get_stock_name(self, ticker):
         if self.use_mock:
             if ticker == "005930": return "Samsung Electronics"
@@ -214,15 +240,26 @@ class MarketDataFetcher:
                 return self.ticker_name_cache[ticker]
 
             name = stock.get_market_ticker_name(ticker)
+            
             # Check if it returned a DataFrame (known pykrx issue sometimes)
             if isinstance(name, pd.DataFrame):
                  if not name.empty:
-                      return str(name.iloc[0, 0])
+                      name = str(name.iloc[0, 0])
                  else:
-                      return str(ticker)
-            if not name:
-                 return str(ticker)
-            return str(name)
+                      name = str(ticker)
+            
+            # If name is empty or same as ticker, try Naver
+            if not name or str(name) == str(ticker):
+                 naver_name = self._fetch_name_naver(ticker)
+                 if naver_name:
+                     self.ticker_name_cache[ticker] = naver_name
+                     return naver_name
+
+            return str(name) if name else str(ticker)
         except:
-            # Fallback to ticker if name fetch fails
+            # Fallback to Naver if pykrx fails completely
+            naver_name = self._fetch_name_naver(ticker)
+            if naver_name:
+                 self.ticker_name_cache[ticker] = naver_name
+                 return naver_name
             return str(ticker)
