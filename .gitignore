@@ -12,6 +12,7 @@ venv/
 results.csv
 *.log
 *.png
+sageledger20/reports/
 
 # VS Code
 .vscode/
